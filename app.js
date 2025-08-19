@@ -183,6 +183,10 @@ function fetchAllPlaylists() {
           localStorage.removeItem("refresh_token");
           requestAuthorization();
           throw new Error("Token expired");
+        } else if (response.status === 429) {
+          alert(
+            "Rate limit exceeded. Please try waiting a bit and subsequently reloading."
+          );
         } else {
           throw new Error(response.statusText);
         }
@@ -209,6 +213,10 @@ function fetchTracksFromPlaylist(playlistId) {
           localStorage.removeItem("refresh_token");
           requestAuthorization();
           throw new Error("Token expired");
+        } else if (response.status === 429) {
+          alert(
+            "Rate limit exceeded. Please try waiting a bit and subsequently reloading."
+          );
         } else {
           throw new Error(response.statusText);
         }
