@@ -164,7 +164,7 @@ function checkAnswer() {
   document.getElementById("guess").disabled = true;
   document.getElementById(
     "gameStatus"
-  ).innerText = `${window._currentTrack.name} by ${window._currentTrack.artists[0].name} Guessed: ${guess}`;
+  ).innerText += `<br>${window._currentTrack.name} by ${window._currentTrack.artists[0].name} Guessed: ${guess}`;
 }
 
 function fetchAllPlaylists() {
