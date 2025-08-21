@@ -78,7 +78,9 @@ async function fetchAllPlaylistsAndTracks() {
   allTracks = [];
 
   try {
-    const playlists = await fetchAllPlaylists();
+    let playlists = await fetchAllPlaylists();
+    //playlists = playlists.slice(0, 5); // for testing
+
     console.log(`Found ${playlists.length} playlists`);
     window._maxplaylists = playlists.length;
 
@@ -132,23 +134,24 @@ function runTurn() {
   var trackId = track.uri.split(":")[2];
   var iframe = document.createElement("iframe");
   iframe.src = `https://open.spotify.com/embed/track/${trackId}`;
-  iframe.width = "230";
-  iframe.height = "100";
+  iframe.width = "300px";
+  iframe.height = "100px";
+  iframe.style.marginLeft = "-230px";
   iframe.frameBorder = "0";
   iframe.allowTransparency = "true";
   iframe.allow = "encrypted-media";
 
-  var hider = document.createElement("div");
-  hider.style.position = "absolute";
-  hider.style.top = "0";
-  hider.style.left = "0";
-  hider.style.width = "200";
-  hider.style.height = "100";
-  hider.style.backgroundColor = "black";
+  //   var hider = document.createElement("div");
+  //   hider.style.position = "relative";
+  //   hider.style.top = "0";
+  //   hider.style.left = "0";
+  //   hider.setAttribute("width", "200px");
+  //   hider.setAttribute("height", "100px");
+  //   hider.style.backgroundColor = "black";
 
   var parentDiv = document.createElement("div");
   parentDiv.appendChild(iframe);
-  parentDiv.appendChild(hider);
+  //   parentDiv.appendChild(hider);
   parentDiv.classList.add("parentDiv");
 
   document.body.appendChild(parentDiv);
@@ -158,13 +161,14 @@ function runTurn() {
   document.getElementById("guess").disabled = false;
 }
 
-function checkAnswer() {
+function checkGuess() {
   var guess = document.getElementById("guess").value.trim().toLowerCase();
   $(".parentDiv").remove();
   document.getElementById("guess").disabled = true;
+  document.getElementById("gameHistory").innerHTML += `<br>`;
   document.getElementById(
-    "gameStatus"
-  ).innerText += `<br>${window._currentTrack.name} by ${window._currentTrack.artists[0].name} Guessed: ${guess}`;
+    "gameHistory"
+  ).innerText += `Song: ${window._currentTrack.name} Guessed: ${guess}`;
 }
 
 function fetchAllPlaylists() {
@@ -242,6 +246,11 @@ function fetchTracksFromPlaylist(playlistId) {
               .innerText.split("/")[0] || 0
           ) + 1
         }/${window._maxplaylists}`;
+
+        let el = document.getElementById("playlistsFetched").innerText;
+        if (parseInt(el.split("/")[0]) >= window._maxplaylists) {
+          document.getElementById("fetching").innerText = "Done!";
+        }
       })
       .catch((error) => reject(error));
   });

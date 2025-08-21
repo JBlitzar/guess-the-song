@@ -21,9 +21,11 @@
           Reset Game
         </button>
         <p id="gameStatus"></p>
+        <br />
+        <p id="gameHistory"></p>
         <textarea
           id="guess"
-          placeholder="Type your guess here..."
+          placeholder="Type your guess here, press Enter to submit"
           rows="1"
           cols="65"
           onkeydown="if (event.key === 'Enter') { event.preventDefault(); checkGuess(); }"
