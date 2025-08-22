@@ -10,14 +10,29 @@ const VERCEL_PLAYLISTS_URL =
 const VERCEL_TRACKS_URL = "https://vercel-gadgets.vercel.app/spotify_tracks";
 
 let allTracks = [];
+// Song source mode: 'all_playlists' | 'my_playlists' | 'liked_songs'
+let sourceMode = localStorage.getItem("sourceMode") || "all_playlists";
+let currentUser = null; // will hold /me response
+
+// ---------------------------------------------------------------------------
+// Spotify embed player UI configuration (tweak values here as desired)
+// ---------------------------------------------------------------------------
+const PLAYER_WIDTH = 320; // iframe width in pixels
+const PLAYER_VIEWPORT_HEIGHT = 34; // visible crop height (px)
+const PLAYER_TRANSLATE_Y = 113; // shift iframe up (px) to hide metadata
 
 function onPageLoad() {
   if (window.location.search.length > 0) {
     handleRedirect();
   } else {
     access_token = localStorage.getItem("access_token");
-
-    fetchAllPlaylistsAndTracks();
+    // Ensure dropdown reflects persisted mode
+    setSourceSelector();
+    // Set neutral status message for user
+    const fetchEl = document.getElementById("fetching");
+    if (fetchEl) {
+      fetchEl.innerText = "Choose a source and click 'Fetch Songs'";
+    }
   }
 }
 
@@ -43,7 +58,7 @@ function requestAuthorization() {
   url +=
     "&scope=" +
     encodeURIComponent(
-      "user-read-private user-read-email playlist-read-private"
+      "user-read-private user-read-email playlist-read-private user-library-read"
     );
   window.location.href = url;
 }
@@ -74,29 +89,48 @@ function fetchAccessToken(code) {
 }
 
 async function fetchAllPlaylistsAndTracks() {
-  console.log("Starting to fetch all playlists and tracks...");
+  console.log(`Starting fetch flow for mode=${sourceMode}`);
   allTracks = [];
 
+  // reset UI counters
+  document.getElementById("fetchAmt").innerText = "";
+  document.getElementById("playlistsFetched").innerText = "";
+
   try {
-    let playlists = await fetchAllPlaylists();
-    //playlists = playlists.slice(0, 5); // for testing
+    if (sourceMode === "liked_songs") {
+      document.getElementById("fetching").innerText = "Fetching liked songs...";
+      allTracks = await fetchLikedTracks();
+    } else {
+      document.getElementById("fetching").innerText =
+        "Fetching playlists and tracks...";
 
-    console.log(`Found ${playlists.length} playlists`);
-    window._maxplaylists = playlists.length;
+      let playlists = await fetchAllPlaylists();
 
-    const trackPromises = playlists.map((playlist, index) => {
-      console.log(`Starting fetch for playlist: ${playlist.name}`);
+      if (sourceMode === "my_playlists") {
+        if (!currentUser) {
+          currentUser = await fetchCurrentUser();
+        }
+        playlists = playlists.filter(
+          (p) => p.owner && p.owner.id === currentUser.id
+        );
+      }
 
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(fetchTracksFromPlaylist(playlist.id));
-        }, index * 500); // otherwise 429
+      console.log(`Playlists considered: ${playlists.length}`);
+      window._maxplaylists = playlists.length;
+
+      const trackPromises = playlists.map((playlist, index) => {
+        console.log(`Starting fetch for playlist: ${playlist.name}`);
+
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(fetchTracksFromPlaylist(playlist.id));
+          }, index * 500); // avoid 429
+        });
       });
-    });
 
-    const tracksArrays = await Promise.all(trackPromises);
-
-    allTracks = tracksArrays.flat();
+      const tracksArrays = await Promise.all(trackPromises);
+      allTracks = tracksArrays.flat();
+    }
 
     console.log(`Total tracks collected: ${allTracks.length}`);
     console.log("All tracks:", allTracks);
@@ -112,8 +146,84 @@ async function fetchAllPlaylistsAndTracks() {
 
     const playableTracks = uniqueTracks.filter((t) => t.preview_url !== null);
     console.log(playableTracks);
+
+    document.getElementById("fetching").innerText = "Done!";
   } catch (error) {
     console.error("Error fetching playlists and tracks:", error);
+  }
+}
+
+async function fetchCurrentUser() {
+  if (currentUser) return currentUser;
+  const response = await fetch("https://api.spotify.com/v1/me", {
+    headers: { Authorization: "Bearer " + access_token },
+  });
+  if (response.status === 200) {
+    currentUser = await response.json();
+    return currentUser;
+  } else if (response.status === 401 || response.status === 403) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    requestAuthorization();
+    throw new Error("Unauthorized fetching current user");
+  } else {
+    throw new Error(await response.text());
+  }
+}
+
+async function fetchLikedTracks() {
+  let liked = [];
+  let url = "https://api.spotify.com/v1/me/tracks?limit=50";
+  while (url) {
+    const resp = await fetch(url, {
+      headers: { Authorization: "Bearer " + access_token },
+    });
+    if (resp.status === 200) {
+      const data = await resp.json();
+      const batch = data.items.map((item) => ({
+        name: item.track.name,
+        artist: item.track.artists[0].name,
+        album: item.track.album.name,
+        playlistId: null,
+        uri: item.track.uri,
+        preview_url: item.track.preview_url,
+      }));
+      liked = liked.concat(batch);
+
+      // update UI counter
+      document.getElementById("fetchAmt").innerText =
+        (parseInt(document.getElementById("fetchAmt").innerText || 0) || 0) +
+        batch.length;
+
+      url = data.next;
+    } else if (resp.status === 401 || resp.status === 403) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      requestAuthorization();
+      throw new Error("Unauthorized while fetching liked songs");
+    } else {
+      throw new Error(await resp.text());
+    }
+  }
+  document.getElementById("playlistsFetched").innerText = "";
+  return liked;
+}
+
+function onSourceChange(newMode) {
+  sourceMode = newMode;
+  localStorage.setItem("sourceMode", sourceMode);
+  setSourceSelector();
+  // reset UI indicators
+  document.getElementById("fetchAmt").innerText = "";
+  document.getElementById("playlistsFetched").innerText = "";
+  document.getElementById("fetching").innerText =
+    "Source changed. Click 'Fetch Songs'";
+}
+
+function setSourceSelector() {
+  const sel = document.getElementById("sourceMode");
+  if (sel) {
+    sel.value = sourceMode;
   }
 }
 
@@ -128,33 +238,58 @@ function startGame() {
   runTurn();
 }
 function runTurn() {
-  var track = window._tracks[Math.floor(Math.random() * window._tracks.length)];
+  const track =
+    window._tracks[Math.floor(Math.random() * window._tracks.length)];
   window._currentTrack = track;
 
-  var trackId = track.uri.split(":")[2];
-  var iframe = document.createElement("iframe");
+  // ensure player container is ready
+  const playerContainer = document.getElementById("playerContainer");
+  if (playerContainer) {
+    playerContainer.innerHTML = "";
+  }
+
+  const trackId = track.uri.split(":")[2];
+
+  // wrapper that masks the top part of Spotify embed
+  const wrapper = document.createElement("div");
+  wrapper.classList.add("parentDiv");
+  wrapper.style.width = `${PLAYER_WIDTH}px`;
+  wrapper.style.height = `${PLAYER_VIEWPORT_HEIGHT}px`;
+  wrapper.style.overflow = "hidden";
+  wrapper.style.margin = "16px auto";
+  wrapper.style.position = "relative";
+  wrapper.style.display = "block";
+  // start hidden to avoid flash of metadata while loading
+  wrapper.style.opacity = "0.00000001";
+  wrapper.style.transition = "opacity 150ms ease-in";
+
+  const iframe = document.createElement("iframe");
   iframe.src = `https://open.spotify.com/embed/track/${trackId}`;
-  iframe.width = "300px";
-  iframe.height = "100px";
-  iframe.style.marginLeft = "-230px";
-  iframe.frameBorder = "0";
-  iframe.allowTransparency = "true";
+  iframe.width = String(PLAYER_WIDTH);
+  iframe.height = "152"; // full height of Spotify embed
+  iframe.style.border = "0";
+  iframe.style.display = "block";
+  // shift up to show only the bottom portion (controls)
+  iframe.style.transform = `translateY(-${PLAYER_TRANSLATE_Y}px)`;
   iframe.allow = "encrypted-media";
+  iframe.allowTransparency = "true";
 
-  //   var hider = document.createElement("div");
-  //   hider.style.position = "relative";
-  //   hider.style.top = "0";
-  //   hider.style.left = "0";
-  //   hider.setAttribute("width", "200px");
-  //   hider.setAttribute("height", "100px");
-  //   hider.style.backgroundColor = "black";
+  // reveal player once fully loaded
+  iframe.addEventListener("load", () => {
+    // next micro-task to ensure styles were applied
+    setTimeout(() => {
+      wrapper.style.opacity = "1";
+    }, 0);
+  });
 
-  var parentDiv = document.createElement("div");
-  parentDiv.appendChild(iframe);
-  //   parentDiv.appendChild(hider);
-  parentDiv.classList.add("parentDiv");
+  wrapper.appendChild(iframe);
 
-  document.body.appendChild(parentDiv);
+  if (playerContainer) {
+    playerContainer.appendChild(wrapper);
+  } else {
+    // fallback
+    document.body.appendChild(wrapper);
+  }
 
   document.getElementById("gameStatus").innerText = "Press play...";
   document.getElementById("guess").value = "";
@@ -163,12 +298,21 @@ function runTurn() {
 
 function checkGuess() {
   var guess = document.getElementById("guess").value.trim().toLowerCase();
-  $(".parentDiv").remove();
+  // clear embedded player container if present
+  const playerContainer = document.getElementById("playerContainer");
+  if (playerContainer) {
+    playerContainer.innerHTML = "";
+  }
+  // Remove any leftover Spotify embed wrappers
+  document.querySelectorAll(".parentDiv").forEach((el) => el.remove());
   document.getElementById("guess").disabled = true;
   document.getElementById("gameHistory").innerHTML += `<br>`;
   document.getElementById(
     "gameHistory"
   ).innerText += `Song: ${window._currentTrack.name} Guessed: ${guess}`;
+
+  // Prompt user to start the next round
+  document.getElementById("gameStatus").innerText = "Press start to play again";
 }
 
 function fetchAllPlaylists() {

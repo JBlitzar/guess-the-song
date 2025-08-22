@@ -16,10 +16,25 @@
       <p id="playlistsFetched"></p>
       <br />
       <center>
+        <!-- Song source mode selector -->
+        <label for="sourceMode">Song Source:&nbsp;</label>
+        <select id="sourceMode" onchange="onSourceChange(this.value)">
+          <option value="all_playlists">All Playlists (default)</option>
+          <option value="my_playlists">My Playlists Only</option>
+          <option value="liked_songs">Liked Songs Only</option>
+        </select>
+        <br /><br />
+        <!-- Manual fetch trigger -->
+        <button id="fetchButton" onclick="fetchAllPlaylistsAndTracks()">
+          Fetch Songs
+        </button>
+        <br /><br />
         <button id="startButton" onclick="startGame()">Start / Again</button>
         <button id="resetButton" onclick="window.location.reload()">
           Reset Game
         </button>
+        <!-- Fixed position for the Spotify player embed -->
+        <div id="playerContainer"></div>
         <p id="gameStatus"></p>
         <br />
         <p id="gameHistory"></p>
