@@ -17,9 +17,9 @@ let currentUser = null; // will hold /me response
 // ---------------------------------------------------------------------------
 // Spotify embed player UI configuration (tweak values here as desired)
 // ---------------------------------------------------------------------------
-const PLAYER_WIDTH = 320;          // iframe width in pixels
+const PLAYER_WIDTH = 320; // iframe width in pixels
 const PLAYER_VIEWPORT_HEIGHT = 34; // visible crop height (px)
-const PLAYER_TRANSLATE_Y = 113;    // shift iframe up (px) to hide metadata
+const PLAYER_TRANSLATE_Y = 113; // shift iframe up (px) to hide metadata
 
 function onPageLoad() {
   if (window.location.search.length > 0) {
@@ -304,9 +304,7 @@ function checkGuess() {
     playerContainer.innerHTML = "";
   }
   // Remove any leftover Spotify embed wrappers
-  document
-    .querySelectorAll(".parentDiv")
-    .forEach((el) => el.remove());
+  document.querySelectorAll(".parentDiv").forEach((el) => el.remove());
   document.getElementById("guess").disabled = true;
   document.getElementById("gameHistory").innerHTML += `<br>`;
   document.getElementById(
@@ -314,7 +312,7 @@ function checkGuess() {
   ).innerText += `Song: ${window._currentTrack.name} Guessed: ${guess}`;
 
   // Prompt user to start the next round
-  document.getElementById("gameStatus").innerText = "Press again";
+  document.getElementById("gameStatus").innerText = "Press start to play again";
 }
 
 function fetchAllPlaylists() {
