@@ -231,33 +231,47 @@ function startGame() {
   runTurn();
 }
 function runTurn() {
-  var track = window._tracks[Math.floor(Math.random() * window._tracks.length)];
+  const track =
+    window._tracks[Math.floor(Math.random() * window._tracks.length)];
   window._currentTrack = track;
 
-  var trackId = track.uri.split(":")[2];
-  var iframe = document.createElement("iframe");
+  // ensure player container is ready
+  const playerContainer = document.getElementById("playerContainer");
+  if (playerContainer) {
+    playerContainer.innerHTML = "";
+  }
+
+  const trackId = track.uri.split(":")[2];
+
+  // wrapper that masks the top part of Spotify embed
+  const wrapper = document.createElement("div");
+  wrapper.classList.add("parentDiv");
+  wrapper.style.width = "320px";
+  wrapper.style.height = "80px";
+  wrapper.style.overflow = "hidden";
+  wrapper.style.margin = "16px auto";
+  wrapper.style.position = "relative";
+  wrapper.style.display = "block";
+
+  const iframe = document.createElement("iframe");
   iframe.src = `https://open.spotify.com/embed/track/${trackId}`;
-  iframe.width = "300px";
-  iframe.height = "100px";
-  iframe.style.marginLeft = "-230px";
-  iframe.frameBorder = "0";
-  iframe.allowTransparency = "true";
+  iframe.width = "320";
+  iframe.height = "152"; // full height of Spotify embed
+  iframe.style.border = "0";
+  iframe.style.display = "block";
+  // shift up to show only the bottom portion (controls)
+  iframe.style.transform = "translateY(-72px)";
   iframe.allow = "encrypted-media";
+  iframe.allowTransparency = "true";
 
-  //   var hider = document.createElement("div");
-  //   hider.style.position = "relative";
-  //   hider.style.top = "0";
-  //   hider.style.left = "0";
-  //   hider.setAttribute("width", "200px");
-  //   hider.setAttribute("height", "100px");
-  //   hider.style.backgroundColor = "black";
+  wrapper.appendChild(iframe);
 
-  var parentDiv = document.createElement("div");
-  parentDiv.appendChild(iframe);
-  //   parentDiv.appendChild(hider);
-  parentDiv.classList.add("parentDiv");
-
-  document.body.appendChild(parentDiv);
+  if (playerContainer) {
+    playerContainer.appendChild(wrapper);
+  } else {
+    // fallback
+    document.body.appendChild(wrapper);
+  }
 
   document.getElementById("gameStatus").innerText = "Press play...";
   document.getElementById("guess").value = "";
@@ -266,6 +280,11 @@ function runTurn() {
 
 function checkGuess() {
   var guess = document.getElementById("guess").value.trim().toLowerCase();
+  // clear embedded player container if present
+  const playerContainer = document.getElementById("playerContainer");
+  if (playerContainer) {
+    playerContainer.innerHTML = "";
+  }
   $(".parentDiv").remove();
   document.getElementById("guess").disabled = true;
   document.getElementById("gameHistory").innerHTML += `<br>`;
