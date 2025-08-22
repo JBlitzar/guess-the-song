@@ -247,7 +247,7 @@ function runTurn() {
   const wrapper = document.createElement("div");
   wrapper.classList.add("parentDiv");
   wrapper.style.width = "320px";
-  wrapper.style.height = "80px";
+  wrapper.style.height = "60px";
   wrapper.style.overflow = "hidden";
   wrapper.style.margin = "16px auto";
   wrapper.style.position = "relative";
@@ -260,7 +260,7 @@ function runTurn() {
   iframe.style.border = "0";
   iframe.style.display = "block";
   // shift up to show only the bottom portion (controls)
-  iframe.style.transform = "translateY(-72px)";
+  iframe.style.transform = "translateY(-92px)";
   iframe.allow = "encrypted-media";
   iframe.allowTransparency = "true";
 
