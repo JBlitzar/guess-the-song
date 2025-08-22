@@ -312,6 +312,9 @@ function checkGuess() {
   document.getElementById(
     "gameHistory"
   ).innerText += `Song: ${window._currentTrack.name} Guessed: ${guess}`;
+
+  // Prompt user to start the next round
+  document.getElementById("gameStatus").innerText = "Press again";
 }
 
 function fetchAllPlaylists() {
