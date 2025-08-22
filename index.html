@@ -24,6 +24,11 @@
           <option value="liked_songs">Liked Songs Only</option>
         </select>
         <br /><br />
+        <!-- Manual fetch trigger -->
+        <button id="fetchButton" onclick="fetchAllPlaylistsAndTracks()">
+          Fetch Songs
+        </button>
+        <br /><br />
         <button id="startButton" onclick="startGame()">Start / Again</button>
         <button id="resetButton" onclick="window.location.reload()">
           Reset Game

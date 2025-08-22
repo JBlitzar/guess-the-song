@@ -21,7 +21,11 @@ function onPageLoad() {
     access_token = localStorage.getItem("access_token");
     // Ensure dropdown reflects persisted mode
     setSourceSelector();
-    fetchAllPlaylistsAndTracks();
+    // Set neutral status message for user
+    const fetchEl = document.getElementById("fetching");
+    if (fetchEl) {
+      fetchEl.innerText = "Choose a source and click 'Fetch Songs'";
+    }
   }
 }
 
@@ -205,8 +209,8 @@ function onSourceChange(newMode) {
   // reset UI indicators
   document.getElementById("fetchAmt").innerText = "";
   document.getElementById("playlistsFetched").innerText = "";
-  document.getElementById("fetching").innerText = "Refreshing data...";
-  fetchAllPlaylistsAndTracks();
+  document.getElementById("fetching").innerText =
+    "Source changed. Click 'Fetch Songs'";
 }
 
 function setSourceSelector() {
