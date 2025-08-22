@@ -15,24 +15,11 @@ let sourceMode = localStorage.getItem("sourceMode") || "all_playlists";
 let currentUser = null; // will hold /me response
 
 // ---------------------------------------------------------------------------
-// Spotify embed player UI configuration
-// You can override these by putting numbers in localStorage:
-//   playerWidth, playerViewport, playerTranslateY
+// Spotify embed player UI configuration (tweak values here as desired)
 // ---------------------------------------------------------------------------
-const PLAYER_WIDTH = parseInt(
-  localStorage.getItem("playerWidth") || "320",
-  10
-);
-// visible crop height
-const PLAYER_VIEWPORT_HEIGHT = parseInt(
-  localStorage.getItem("playerViewport") || "54",
-  10
-);
-// how far to move the iframe up (positive number → further crop top)
-const PLAYER_TRANSLATE_Y = parseInt(
-  localStorage.getItem("playerTranslateY") || "100",
-  10
-);
+const PLAYER_WIDTH = 320;          // iframe width in pixels
+const PLAYER_VIEWPORT_HEIGHT = 34; // visible crop height (px)
+const PLAYER_TRANSLATE_Y = 113;    // shift iframe up (px) to hide metadata
 
 function onPageLoad() {
   if (window.location.search.length > 0) {
@@ -205,8 +192,8 @@ async function fetchLikedTracks() {
 
       // update UI counter
       document.getElementById("fetchAmt").innerText =
-        (parseInt(document.getElementById("fetchAmt").innerText || 0) ||
-          0) + batch.length;
+        (parseInt(document.getElementById("fetchAmt").innerText || 0) || 0) +
+        batch.length;
 
       url = data.next;
     } else if (resp.status === 401 || resp.status === 403) {
@@ -305,7 +292,10 @@ function checkGuess() {
   if (playerContainer) {
     playerContainer.innerHTML = "";
   }
-  $(".parentDiv").remove();
+  // Remove any leftover Spotify embed wrappers
+  document
+    .querySelectorAll(".parentDiv")
+    .forEach((el) => el.remove());
   document.getElementById("guess").disabled = true;
   document.getElementById("gameHistory").innerHTML += `<br>`;
   document.getElementById(
