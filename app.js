@@ -259,6 +259,9 @@ function runTurn() {
   wrapper.style.margin = "16px auto";
   wrapper.style.position = "relative";
   wrapper.style.display = "block";
+  // start hidden to avoid flash of metadata while loading
+  wrapper.style.opacity = "0.00000001";
+  wrapper.style.transition = "opacity 150ms ease-in";
 
   const iframe = document.createElement("iframe");
   iframe.src = `https://open.spotify.com/embed/track/${trackId}`;
@@ -270,6 +273,14 @@ function runTurn() {
   iframe.style.transform = `translateY(-${PLAYER_TRANSLATE_Y}px)`;
   iframe.allow = "encrypted-media";
   iframe.allowTransparency = "true";
+
+  // reveal player once fully loaded
+  iframe.addEventListener("load", () => {
+    // next micro-task to ensure styles were applied
+    setTimeout(() => {
+      wrapper.style.opacity = "1";
+    }, 0);
+  });
 
   wrapper.appendChild(iframe);
 
