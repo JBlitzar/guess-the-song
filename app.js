@@ -14,6 +14,26 @@ let allTracks = [];
 let sourceMode = localStorage.getItem("sourceMode") || "all_playlists";
 let currentUser = null; // will hold /me response
 
+// ---------------------------------------------------------------------------
+// Spotify embed player UI configuration
+// You can override these by putting numbers in localStorage:
+//   playerWidth, playerViewport, playerTranslateY
+// ---------------------------------------------------------------------------
+const PLAYER_WIDTH = parseInt(
+  localStorage.getItem("playerWidth") || "320",
+  10
+);
+// visible crop height
+const PLAYER_VIEWPORT_HEIGHT = parseInt(
+  localStorage.getItem("playerViewport") || "54",
+  10
+);
+// how far to move the iframe up (positive number → further crop top)
+const PLAYER_TRANSLATE_Y = parseInt(
+  localStorage.getItem("playerTranslateY") || "100",
+  10
+);
+
 function onPageLoad() {
   if (window.location.search.length > 0) {
     handleRedirect();
@@ -246,8 +266,8 @@ function runTurn() {
   // wrapper that masks the top part of Spotify embed
   const wrapper = document.createElement("div");
   wrapper.classList.add("parentDiv");
-  wrapper.style.width = "320px";
-  wrapper.style.height = "60px";
+  wrapper.style.width = `${PLAYER_WIDTH}px`;
+  wrapper.style.height = `${PLAYER_VIEWPORT_HEIGHT}px`;
   wrapper.style.overflow = "hidden";
   wrapper.style.margin = "16px auto";
   wrapper.style.position = "relative";
@@ -255,12 +275,12 @@ function runTurn() {
 
   const iframe = document.createElement("iframe");
   iframe.src = `https://open.spotify.com/embed/track/${trackId}`;
-  iframe.width = "320";
+  iframe.width = String(PLAYER_WIDTH);
   iframe.height = "152"; // full height of Spotify embed
   iframe.style.border = "0";
   iframe.style.display = "block";
   // shift up to show only the bottom portion (controls)
-  iframe.style.transform = "translateY(-92px)";
+  iframe.style.transform = `translateY(-${PLAYER_TRANSLATE_Y}px)`;
   iframe.allow = "encrypted-media";
   iframe.allowTransparency = "true";
 
