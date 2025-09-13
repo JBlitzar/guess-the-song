@@ -12,3 +12,7 @@ Fun game in which you are presented with a random song from your spotify and you
 
 Visit [https://jblitzar.github.io/guess-the-song/](https://jblitzar.github.io/guess-the-song/)!
 It will request oath scope access using the Spotify API. Go ahead and click through. Then select which option you want. Finally, click start. The instructions should take you from there.
+
+## AI
+
+I mostly didn't use AI when developing this project. At the end, I wanted to add a feature where you can change the source, and I used AI for that.
