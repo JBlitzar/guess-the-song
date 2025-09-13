@@ -36,8 +36,15 @@ function onPageLoad() {
     const authResult = localStorage.getItem("authResult");
     if (fetchEl) {
       if (authFlow && authResult === "success") {
-        fetchEl.innerText =
-          "Authorization successful. Click 'Fetch Songs' (again) to continue.";
+        // If an action will auto-resume, show concise status
+        const pending = localStorage.getItem("postAuthAction");
+        if (pending === "fetch") {
+          fetchEl.innerText = "Authorized. Fetching your music...";
+        } else {
+          fetchEl.innerText =
+            "Authorization successful. Click 'Fetch Songs' to continue.";
+        }
+        ("Authorization successful. Click 'Fetch Songs' (again) to continue.");
       } else if (authFlow && authResult === "error") {
         fetchEl.innerText =
           "Authorization failed. Please try 'Fetch Songs' again.";
@@ -109,6 +116,20 @@ function fetchAccessToken(code) {
       alert("Error getting access token: " + error);
     })
     .finally(() => {
+      // auto-resume pending action (e.g., fetch) after successful auth
+      const pending = localStorage.getItem("postAuthAction");
+      if (
+        pending === "fetch" &&
+        localStorage.getItem("authResult") === "success"
+      ) {
+        localStorage.removeItem("postAuthAction");
+        onPageLoad();
+        // slight delay to allow UI to reflect
+        setTimeout(() => {
+          fetchAllPlaylistsAndTracks();
+        }, 0);
+        return;
+      }
       onPageLoad();
     });
 }
@@ -120,6 +141,15 @@ async function fetchAllPlaylistsAndTracks() {
   // reset UI counters
   document.getElementById("fetchAmt").innerText = "";
   document.getElementById("playlistsFetched").innerText = "";
+
+  // If no token, initiate auth once and return (avoid loops)
+  if (!access_token) {
+    localStorage.setItem("postAuthAction", "fetch");
+    const el = document.getElementById("fetching");
+    if (el) el.innerText = "Authorizing with Spotify...";
+    requestAuthorization();
+    return;
+  }
 
   try {
     if (sourceMode === "liked_songs") {
@@ -175,6 +205,10 @@ async function fetchAllPlaylistsAndTracks() {
     document.getElementById("fetching").innerText = "Done!";
   } catch (error) {
     console.error("Error fetching playlists and tracks:", error);
+    const el = document.getElementById("fetching");
+    if (el)
+      el.innerText =
+        "Authorization required or fetch failed. Click 'Fetch Songs' to try again.";
   }
 }
 
@@ -189,7 +223,11 @@ async function fetchCurrentUser() {
   } else if (response.status === 401 || response.status === 403) {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-    requestAuthorization();
+    localStorage.setItem("postAuthAction", "fetch");
+    const el = document.getElementById("fetching");
+    if (el)
+      el.innerText =
+        "Authorization expired (yikes). Click 'Fetch Songs' to re-authorize.";
     throw new Error("Unauthorized fetching current user");
   } else {
     throw new Error(await response.text());
@@ -224,7 +262,11 @@ async function fetchLikedTracks() {
     } else if (resp.status === 401 || resp.status === 403) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
-      requestAuthorization();
+      localStorage.setItem("postAuthAction", "fetch");
+      const el = document.getElementById("fetching");
+      if (el)
+        el.innerText =
+          "Authorization expired. Click 'Fetch Songs' to re-authorize.";
       throw new Error("Unauthorized while fetching liked songs");
     } else {
       throw new Error(await resp.text());
@@ -354,7 +396,11 @@ function fetchAllPlaylists() {
         } else if (response.status === 401) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
-          requestAuthorization();
+          localStorage.setItem("postAuthAction", "fetch");
+          const el = document.getElementById("fetching");
+          if (el)
+            el.innerText =
+              "Authorization expired. Click 'Fetch Songs' to re-authorize.";
           throw new Error("Token expired");
         } else if (response.status === 429) {
           alert(
@@ -384,7 +430,11 @@ function fetchTracksFromPlaylist(playlistId) {
         } else if (response.status === 401) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
-          requestAuthorization();
+          localStorage.setItem("postAuthAction", "fetch");
+          const el = document.getElementById("fetching");
+          if (el)
+            el.innerText =
+              "Authorization expired. Click 'Fetch Songs' to re-authorize.";
           throw new Error("Token expired");
         } else if (response.status === 429) {
           alert(
