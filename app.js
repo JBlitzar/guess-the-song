@@ -1,5 +1,9 @@
 var redirect_uri = window.location.origin + window.location.pathname;
 
+// Explicit token vars so we can clear them in-memory when invalidated
+let access_token = null;
+let refresh_token = null;
+
 // Use Vercel API endpoints
 const VERCEL_AUTH_URL =
   "https://vercel-gadgets.vercel.app/spotify_request_auth";
@@ -13,6 +17,17 @@ let allTracks = [];
 // Song source mode: 'all_playlists' | 'my_playlists' | 'liked_songs'
 let sourceMode = localStorage.getItem("sourceMode") || "all_playlists";
 let currentUser = null; // will hold /me response
+
+// Simple UI error reporting helper
+function showError(err, context) {
+  const el = document.getElementById("fetching");
+  const detail = err && err.stack ? err.stack : err && err.message ? err.message : String(err);
+  const msg = context ? `${context}: ${detail}` : detail;
+  if (el) el.innerText = msg;
+  try {
+    alert(msg);
+  } catch (_) {}
+}
 
 // ---------------------------------------------------------------------------
 // Spotify embed player UI configuration (tweak values here as desired)
@@ -62,8 +77,22 @@ function onPageLoad() {
 }
 
 function handleRedirect() {
-  let code = getCode();
-  fetchAccessToken(code);
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get("error");
+  const code = params.get("code");
+
+  if (error || !code) {
+    localStorage.setItem("authResult", "error");
+    // ensure tokens cleared
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    access_token = null;
+    refresh_token = null;
+    const el = document.getElementById("fetching");
+    if (el) el.innerText = `Authorization failed${error ? ": " + error : ""}.`;
+  } else {
+    fetchAccessToken(code);
+  }
   window.history.pushState("", "", redirect_uri);
 }
 
@@ -111,9 +140,13 @@ function fetchAccessToken(code) {
       localStorage.setItem("authResult", "success");
     })
     .catch((error) => {
-      console.log(error);
       localStorage.setItem("authResult", "error");
-      alert("Error getting access token: " + error);
+      // clear any stale tokens in memory as well
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      access_token = null;
+      refresh_token = null;
+      showError(error, "Error getting access token");
     })
     .finally(() => {
       // auto-resume pending action (e.g., fetch) after successful auth
@@ -143,6 +176,7 @@ async function fetchAllPlaylistsAndTracks() {
   document.getElementById("playlistsFetched").innerText = "";
 
   // If no token, initiate auth once and return (avoid loops)
+  access_token = localStorage.getItem("access_token");
   if (!access_token) {
     localStorage.setItem("postAuthAction", "fetch");
     const el = document.getElementById("fetching");
@@ -205,9 +239,7 @@ async function fetchAllPlaylistsAndTracks() {
     document.getElementById("fetching").innerText = "Done!";
   } catch (error) {
     console.error("Error fetching playlists and tracks:", error);
-    const el = document.getElementById("fetching");
-    if (el)
-      el.innerText =
+    showError(error, "Error fetching playlists and tracks");
         "Authorization required or fetch failed. Click 'Fetch Songs' to try again.";
   }
 }
@@ -222,8 +254,10 @@ async function fetchCurrentUser() {
     return currentUser;
   } else if (response.status === 401 || response.status === 403) {
     localStorage.removeItem("access_token");
+    localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-    localStorage.setItem("postAuthAction", "fetch");
+    access_token = null;
+    refresh_token = null;
     const el = document.getElementById("fetching");
     if (el)
       el.innerText =
@@ -261,8 +295,10 @@ async function fetchLikedTracks() {
       url = data.next;
     } else if (resp.status === 401 || resp.status === 403) {
       localStorage.removeItem("access_token");
+      localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
-      localStorage.setItem("postAuthAction", "fetch");
+      access_token = null;
+      refresh_token = null;
       const el = document.getElementById("fetching");
       if (el)
         el.innerText =
@@ -396,15 +432,20 @@ function fetchAllPlaylists() {
         } else if (response.status === 401) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
-          localStorage.setItem("postAuthAction", "fetch");
-          const el = document.getElementById("fetching");
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          access_token = null;
+          refresh_token = null;
+          access_token = null;
+          refresh_token = null;
           if (el)
             el.innerText =
               "Authorization expired. Click 'Fetch Songs' to re-authorize.";
           throw new Error("Token expired");
         } else if (response.status === 429) {
-          alert(
-            "Rate limit exceeded. Please try waiting a bit and subsequently reloading."
+          showError(
+            "Rate limit exceeded. Please try waiting a bit and subsequently reloading.",
+            "Spotify API"
           );
         } else {
           throw new Error(response.statusText);
@@ -437,8 +478,9 @@ function fetchTracksFromPlaylist(playlistId) {
               "Authorization expired. Click 'Fetch Songs' to re-authorize.";
           throw new Error("Token expired");
         } else if (response.status === 429) {
-          alert(
-            "Rate limit exceeded. Please try waiting a bit and subsequently reloading."
+          showError(
+            "Rate limit exceeded. Please try waiting a bit and subsequently reloading.",
+            "Spotify API"
           );
         } else {
           throw new Error(response.statusText);
