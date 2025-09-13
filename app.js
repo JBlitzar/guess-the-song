@@ -23,15 +23,33 @@ const PLAYER_TRANSLATE_Y = 113; // shift iframe up (px) to hide metadata
 
 function onPageLoad() {
   if (window.location.search.length > 0) {
+    const fetchEl = document.getElementById("fetching");
+    if (fetchEl) fetchEl.innerText = "Completing Spotify authorization...";
     handleRedirect();
   } else {
     access_token = localStorage.getItem("access_token");
     // Ensure dropdown reflects persisted mode
     setSourceSelector();
-    // Set neutral status message for user
+    // Post-auth status messaging
     const fetchEl = document.getElementById("fetching");
+    const authFlow = localStorage.getItem("authFlow");
+    const authResult = localStorage.getItem("authResult");
     if (fetchEl) {
-      fetchEl.innerText = "Choose a source and click 'Fetch Songs'";
+      if (authFlow && authResult === "success") {
+        fetchEl.innerText =
+          "Authorization successful. Click 'Fetch Songs' (again) to continue.";
+      } else if (authFlow && authResult === "error") {
+        fetchEl.innerText =
+          "Authorization failed. Please try 'Fetch Songs' again.";
+      } else {
+        // Neutral default message
+        fetchEl.innerText = "Choose a source and click 'Fetch Songs'";
+      }
+    }
+    // Clear auth flow flags after messaging
+    if (authFlow || authResult) {
+      localStorage.removeItem("authFlow");
+      localStorage.removeItem("authResult");
     }
   }
 }
@@ -60,6 +78,8 @@ function requestAuthorization() {
     encodeURIComponent(
       "user-read-private user-read-email playlist-read-private user-library-read"
     );
+  // mark that we're entering auth flow so we can show a post-auth message
+  localStorage.setItem("authFlow", "1");
   window.location.href = url;
 }
 
@@ -80,11 +100,16 @@ function fetchAccessToken(code) {
         refresh_token = data.refresh_token;
         localStorage.setItem("refresh_token", refresh_token);
       }
-      onPageLoad();
+      // mark success for user messaging
+      localStorage.setItem("authResult", "success");
     })
     .catch((error) => {
       console.log(error);
+      localStorage.setItem("authResult", "error");
       alert("Error getting access token: " + error);
+    })
+    .finally(() => {
+      onPageLoad();
     });
 }
 
