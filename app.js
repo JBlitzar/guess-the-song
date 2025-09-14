@@ -114,6 +114,7 @@ function requestAuthorization() {
     encodeURIComponent(
       "user-read-private user-read-email playlist-read-private user-library-read"
     );
+  url += "&show_dialog=true";
   // mark that we're entering auth flow so we can show a post-auth message
   localStorage.setItem("authFlow", "1");
   window.location.href = url;
@@ -240,6 +241,9 @@ async function fetchAllPlaylistsAndTracks() {
   } catch (error) {
     console.error("Error fetching playlists and tracks:", error);
     showError(error, "Error fetching playlists and tracks");
+    const el = document.getElementById("fetching");
+    if (el)
+      el.innerText =
         "Authorization required or fetch failed. Click 'Fetch Songs' to try again.";
   }
 }
@@ -261,8 +265,12 @@ async function fetchCurrentUser() {
     const el = document.getElementById("fetching");
     if (el)
       el.innerText =
-        "Authorization expired (yikes). Click 'Fetch Songs' to re-authorize.";
-    throw new Error("Unauthorized fetching current user");
+        "Authorization missing/insufficient. Click 'Fetch Songs' to re-authorize.";
+    let body = "";
+    try {
+      body = await response.text();
+    } catch (_) {}
+    throw new Error(body || "Unauthorized fetching current user");
   } else {
     throw new Error(await response.text());
   }
@@ -429,7 +437,7 @@ function fetchAllPlaylists() {
       .then((response) => {
         if (response.status === 200) {
           return response.json();
-        } else if (response.status === 401) {
+        } else if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           localStorage.removeItem("access_token");
@@ -438,9 +446,10 @@ function fetchAllPlaylists() {
           refresh_token = null;
           access_token = null;
           refresh_token = null;
+          const el = document.getElementById("fetching");
           if (el)
             el.innerText =
-              "Authorization expired. Click 'Fetch Songs' to re-authorize.";
+              "Authorization missing/insufficient. Click 'Fetch Songs' to re-authorize.";
           throw new Error("Token expired");
         } else if (response.status === 429) {
           showError(
@@ -468,14 +477,14 @@ function fetchTracksFromPlaylist(playlistId) {
       .then((response) => {
         if (response.status === 200) {
           return response.json();
-        } else if (response.status === 401) {
+        } else if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           localStorage.setItem("postAuthAction", "fetch");
           const el = document.getElementById("fetching");
           if (el)
             el.innerText =
-              "Authorization expired. Click 'Fetch Songs' to re-authorize.";
+              "Authorization missing/insufficient. Click 'Fetch Songs' to re-authorize.";
           throw new Error("Token expired");
         } else if (response.status === 429) {
           showError(
